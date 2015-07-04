@@ -83,12 +83,14 @@ function saveData(data) {
     appendLine(line);
 }
 
+function pollApi(){
+    apiCall(function () {
+        // we did not get data we should retry... With an interval
+        setTimeout(function () {
+            log("did not get data, retrying...");
+            pollApi(); // call wrapper function to place apiCall() on the event queue again
+        }, 10000);
+    });
+}
 
-apiCall(function () {
-    // we did not get data we should retry... With an interval
-    setTimeout(function () {
-        log("did not get data, retrying...");
-        pollApi();
-    }, 10000);
-});
-
+pollApi();
