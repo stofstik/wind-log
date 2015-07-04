@@ -5,6 +5,7 @@ This script will log wind direction and speed to a file
 var fs = require('fs');
 var request = require('request');
 var moment = require('moment');
+var dtd = require('degtodir');
 
 // log("started!");
 
@@ -25,26 +26,6 @@ function appendLine(line) {
         }
         log("File saved");
     });
-}
-
-function degreesToDirection(deg) {
-    if (deg >= 337.5 && deg <= 22.5) {
-        return "N";
-    } else if (deg >= 22.5 && deg <= 67.5) {
-        return "NE";
-    } else if (deg >= 67.5 && deg <= 112.5) {
-        return "E";
-    } else if (deg >= 112.5 && deg <= 157.5) {
-        return "SE";
-    } else if (deg >= 157.5 && deg <= 202.5) {
-        return "S";
-    } else if (deg >= 202.5 && deg <= 247.5) {
-        return "SW";
-    } else if (deg >= 247.5 && deg <= 292.5) {
-        return "W";
-    } else if (deg >= 292.5 && deg <= 337.5) {
-        return "NW";
-    }
 }
 
 function apiCall(retry) {
@@ -85,7 +66,7 @@ function apiCall(retry) {
 
 function displayData(error, data) {
     if (!error) {
-        log(degreesToDirection(data.wind.deg) + " " + data.wind.speed);
+        log(dtd.degToDir(data.wind.deg) + " " + data.wind.speed);
     } else {
         log(error);
     }
@@ -95,7 +76,7 @@ function saveData(data) {
     var line = "";
     line += dateFormat(new Date());
     line += " ";
-    line += degreesToDirection(data.wind.deg);
+    line += dtd.degToDir(data.wind.deg);
     line += " ";
     line += data.wind.speed;
     log(line);
