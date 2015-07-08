@@ -1,3 +1,5 @@
+#!/usr/local/bin/node
+
 /*
 This script will log wind direction and speed to a file
 */
@@ -19,13 +21,15 @@ function log(string) {
 
 // function which prints the given argument to a file called wind.log
 function appendLine(line) {
-    var file = "wind.log";
+    // do not use a relative path!
+    // the log will not be saved in the scripts dir when using a cron job!
+    var file = "/home/pi/www/wind-log/wind.log";
     line += "\r\n";
     fs.appendFile(file, line, function (err) {
         if (err) {
             return log(err);
         }
-        log("File saved");
+        log("File saved " + file);
     });
 }
 
