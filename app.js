@@ -9,6 +9,8 @@ var request = require('request');
 var moment = require('moment');
 var dtd = require('degtodir');
 
+var RETRY_INTERVAL = 60 * 1000;
+var RETRY_AMOUNT = 15;
 var retries = 0;
 
 // function to return formatted 'now' date
@@ -79,12 +81,15 @@ function retry() {
     setTimeout(function () {
         log("did not get wind direction, retrying...");
         pollApi(); // poll the api again
-    }, 1000 * 60); // wait for 1 minute
+    }, RETRY_INTERVAL); // wait for a while before retrying
 }
 
 // poll the api, if we did not get wind data, retry
 function pollApi() {
-    apiCall(retry);
+    // if not getting wind data for 
+    if (retries <= RETRY_AMOUNT) {
+        apiCall(retry);
+    }
 }
 
 // display data on console
