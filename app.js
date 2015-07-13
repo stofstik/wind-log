@@ -9,6 +9,8 @@ var request = require('request');
 var moment = require('moment');
 var dtd = require('degtodir');
 
+var retries = 0;
+
 // function to return formatted 'now' date
 function dateFormat(date) {
     return moment(date).format("YYYY-MM-DD HH:mm:ss");
@@ -73,6 +75,7 @@ function apiCall(callback) {
 
 function retry() {
     // we did not get wind direction we should retry... And wait for a while
+    retries += 1; // increment the amount of retries
     setTimeout(function () {
         log("did not get wind direction, retrying...");
         pollApi(); // poll the api again
@@ -93,7 +96,7 @@ function displayData(error, data) {
     }
 }
 
-// create string with data, convert wind degrees to direction and print to file
+// create string with data, convert wind degrees to direction, notify of retries and print to file
 function saveData(data) {
     var line = "";
     line += dateFormat(new Date());
@@ -101,6 +104,9 @@ function saveData(data) {
     line += dtd.degToDir(data.wind.deg);
     line += " ";
     line += data.wind.speed;
+    if (retries > 0) {
+        line += " Needed " + retries + " retries";
+    }
     log(line);
     appendLine(line);
 }
