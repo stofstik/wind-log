@@ -16,7 +16,7 @@ function dateFormat(date) {
 
 // print log string to console
 function log(string) {
-    console.log(dateFormat(new Date) + " " + string);
+    console.log(dateFormat(new Date()) + " " + string);
 }
 
 // function which prints the given argument to a file called wind.log
@@ -34,7 +34,7 @@ function appendLine(line) {
 }
 
 // make a call to the api
-function apiCall(retry) {
+function apiCall(callback) {
     // declare API stuffs
     // var apiKey = "44b456335f8c7ab81a09cc743bf5b332";
     var apiBaseUri = "http://api.openweathermap.org/data/2.5/weather";
@@ -53,8 +53,8 @@ function apiCall(retry) {
             var data = JSON.parse(body);
             if (!data.wind.deg) {
                 // wind.deg not found we should make another call to the api
-                process.nextTick(function () {
-                    retry();
+                process.nextTick(function () { // is nextTick even necessary?
+                    callback();
                 });
             } else {
                 // wind.deg found
@@ -71,15 +71,17 @@ function apiCall(retry) {
     request(options, getData);
 }
 
-// poll the api, if we did not get wind data we put apiCall on the event queue
+function retry() {
+    // we did not get wind direction we should retry... And wait for a while
+    setTimeout(function () {
+        log("did not get wind direction, retrying...");
+        pollApi(); // poll the api again
+    }, 1000 * 60); // wait for 1 minute
+}
+
+// poll the api, if we did not get wind data, retry
 function pollApi() {
-    apiCall(function () {
-        // we did not get wind direction we should retry... And wait for a while
-        setTimeout(function () {
-            log("did not get wind direction, retrying...");
-            pollApi(); // call wrapper function to place apiCall() on the event queue again
-        }, 1000 * 60); // wait for 1 minute
-    });
+    apiCall(retry);
 }
 
 // display data on console
