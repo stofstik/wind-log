@@ -27,7 +27,7 @@ function log(string) {
 function appendLine(line) {
     // do not use a relative path!
     // the log will not be saved in the scripts dir when using a cron job!
-    var file = "/home/pi/www/wind-log/wind.log";
+    var file = "/home/pi/www/wind-log/logs/wind.log";
     line += "\r\n";
     fs.appendFile(file, line, function (err) {
         if (err) {
@@ -55,7 +55,7 @@ function apiCall(callback) {
         if (!error && response.statusCode == 200) {
             // log(apiUri);
             var data = JSON.parse(body);
-            if (!data.wind.deg) {
+            if (data.wind.deg == null) { // ('==' value is null or undefined)
                 // wind.deg not found we should make another call to the api
                 process.nextTick(function () { // is nextTick even necessary?
                     callback();
@@ -63,7 +63,7 @@ function apiCall(callback) {
             } else {
                 // wind.deg found
                 displayData(null, data);
-                saveData(data);
+                saveData(null, data);
             }
         } else {
             // error!
@@ -86,9 +86,11 @@ function retry() {
 
 // poll the api, if we did not get wind data, retry
 function pollApi() {
-    // if not getting wind data for 
-    if (retries <= RETRY_AMOUNT) {
+    // if not getting wind data for RETRY_AMOUNT, give up
+    if (retries < RETRY_AMOUNT) {
         apiCall(retry);
+    } else {
+        saveData('error');
     }
 }
 
@@ -102,18 +104,23 @@ function displayData(error, data) {
 }
 
 // create string with data, convert wind degrees to direction, notify of retries and print to file
-function saveData(data) {
+function saveData(error, data) {
     var line = "";
     line += dateFormat(new Date());
     line += " ";
-    line += dtd.degToDir(data.wind.deg);
-    line += " ";
-    line += data.wind.speed;
-    if (retries > 0) {
-        line += " Needed " + retries + " retries";
+    if(!error){
+        line += dtd.degToDir(data.wind.deg);
+        line += " ";
+        line += data.wind.speed;
+        if (retries > 0) {
+            line += " Needed " + retries + " retries";
+        }
+        log(line);
+        appendLine(line);
+    } else {
+        line += "Gave up after " + retries + " retries";
+        appendLine(line);
     }
-    log(line);
-    appendLine(line);
 }
 
 // run the program
