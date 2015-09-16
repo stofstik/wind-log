@@ -27,7 +27,7 @@ function log(string) {
 function appendLine(line) {
     // do not use a relative path!
     // the log will not be saved in the scripts dir when using a cron job!
-    var file = "/home/pi/www/wind-log/logs/wind.log";
+    var file = "/home/pi/www/wind-log/logs/wind.log"; // TODO create directory if note exists!
     line += "\r\n";
     fs.appendFile(file, line, function (err) {
         if (err) {
