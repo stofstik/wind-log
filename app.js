@@ -16,7 +16,6 @@ var CITY            = "Amsterdam";
 var COUNTRY_CODE    = "NL";
 
 var retries = 0;
-var apiError = false;
 
 // function to return formatted 'now' date
 function dateFormat(date) {
@@ -28,7 +27,7 @@ function log(string) {
     console.log(dateFormat(new Date()) + " " + string);
 }
 
-// function which prints the given argument to a file called wind.log
+// function which appends the given argument to a file
 function appendLine(line) {
     var dir = __dirname + "/logs";
     var file = dir + "/wind.log";
@@ -47,6 +46,26 @@ function appendLine(line) {
             log(err);
         }        
     });    
+}
+
+// create string with data, convert wind degrees to direction, notify of retries and print to file
+function saveData(error, data) {
+    var line = "";
+    line += dateFormat(new Date());
+    line += " ";
+    if(!error){
+        line += dtd.degToDir(data.wind.deg);
+        line += " ";
+        line += data.wind.speed;
+        if (retries > 0) {
+            line += " Needed " + retries + " retries";
+        }
+        log("Saving line: " + line);
+        appendLine(line);
+    } else {
+        line += "Gave up after " + retries + " retries";
+        appendLine(line);
+    }
 }
 
 // make a call to the api
@@ -110,26 +129,6 @@ function pollApi() {
         apiCall(retry);
     } else {
         saveData('error');
-    }
-}
-
-// create string with data, convert wind degrees to direction, notify of retries and print to file
-function saveData(error, data) {
-    var line = "";
-    line += dateFormat(new Date());
-    line += " ";
-    if(!error){
-        line += dtd.degToDir(data.wind.deg);
-        line += " ";
-        line += data.wind.speed;
-        if (retries > 0) {
-            line += " Needed " + retries + " retries";
-        }
-        log("Saving line: " + line);
-        appendLine(line);
-    } else {
-        line += "Gave up after " + retries + " retries";
-        appendLine(line);
     }
 }
 
