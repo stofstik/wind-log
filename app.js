@@ -4,14 +4,19 @@
 This script will log wind direction and speed to a file
 */
 
-var fs = require('fs');
-var request = require('request');
-var moment = require('moment');
-var dtd = require('degtodir');
+var fs      = require('fs-extra');  // For file system stuffs
+var request = require('request');   // For HTTP call stuffs
+var moment  = require('moment');    // For dateformat stuffs
+var dtd     = require('degtodir');  // Degrees to direction converter
 
-var RETRY_INTERVAL = 60 * 1000;
-var RETRY_AMOUNT = 15;
+// basic script settings
+var RETRY_INTERVAL  =  60 * 1000;
+var RETRY_AMOUNT    =  15;
+var CITY            = "Amsterdam";
+var COUNTRY_CODE    = "NL";
+
 var retries = 0;
+var apiError = false;
 
 // function to return formatted 'now' date
 function dateFormat(date) {
@@ -25,16 +30,23 @@ function log(string) {
 
 // function which prints the given argument to a file called wind.log
 function appendLine(line) {
-    // do not use a relative path!
-    // the log will not be saved in the scripts dir when using a cron job!
-    var file = "/home/pi/www/wind-log/logs/wind.log"; // TODO create directory if note exists!
-    line += "\r\n";
-    fs.appendFile(file, line, function (err) {
-        if (err) {
-            return log(err);
-        }
-        log("File saved " + file);
-    });
+    var dir = __dirname + "/logs";
+    var file = dir + "/wind.log";
+    // ensure file exists using fs-extra
+    fs.ensureFile(file, function (err) {
+        if(!err){
+            // no error, write the line to the file
+            line += "\r\n";
+            fs.appendFile(file, line, function (err) {
+                if (err) {
+                    return log(err);
+                }
+                log("Saving file: " + file);
+            });
+        } else {
+            log(err);
+        }        
+    });    
 }
 
 // make a call to the api
@@ -42,7 +54,7 @@ function apiCall(callback) {
     // declare API stuffs
     // var apiKey = "44b456335f8c7ab81a09cc743bf5b332";
     var apiBaseUri = "http://api.openweathermap.org/data/2.5/weather";
-    var apiUriOptions = "?q=Amsterdam&units=metric";
+    var apiUriOptions = "?q=" + CITY + "," + COUNTRY_CODE + "&units=metric";
     var apiUri = apiBaseUri + apiUriOptions;
 
     // set up for request
@@ -52,22 +64,29 @@ function apiCall(callback) {
 
     // set up 'getData', this is part of 'Request'
     function getData(error, response, body) {
+        // check for http errors
         if (!error && response.statusCode == 200) {
-            // log(apiUri);
             var data = JSON.parse(body);
-            if (data.wind.deg == null) { // ('==' value is null or undefined)
-                // wind.deg not found we should make another call to the api
-                process.nextTick(function () { // is nextTick even necessary?
-                    callback();
-                });
+            // check for api errors, city may not exist, etc.
+            if (data.cod === 200) {
+                // no api error, check if we got wind data
+                if (!data.wind.deg) {
+                    // wind.deg not found we should make another call to the api
+                    process.nextTick(function () { // is nextTick even necessary?
+                        callback();
+                    });
+                } else {
+                    // wind.deg found
+                    saveData(null, data);
+                }
             } else {
-                // wind.deg found
-                displayData(null, data);
-                saveData(null, data);
-            }
+                // api error!
+                log(data.cod + ", " + data.message); // print to console
+                appendLine(data.cod + ", " + data.message); // but also notify in log
+            }        
         } else {
-            // error!
-            displayData(error);
+            // http error!
+            log(error);
         }
     }
 
@@ -94,15 +113,6 @@ function pollApi() {
     }
 }
 
-// display data on console
-function displayData(error, data) {
-    if (!error) {
-        log(dtd.degToDir(data.wind.deg) + " " + data.wind.speed);
-    } else {
-        log(error);
-    }
-}
-
 // create string with data, convert wind degrees to direction, notify of retries and print to file
 function saveData(error, data) {
     var line = "";
@@ -115,7 +125,7 @@ function saveData(error, data) {
         if (retries > 0) {
             line += " Needed " + retries + " retries";
         }
-        log(line);
+        log("Saving line: " + line);
         appendLine(line);
     } else {
         line += "Gave up after " + retries + " retries";
